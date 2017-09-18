@@ -1,0 +1,291 @@
+---
+title: "ANLY 530-50 Project Analysis: Predicting Customers who Would Subscribe to Bank Term Loan Offering"
+author: "Vichetrath Meas"
+date: "January 10, 2017"
+output: 
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. INTRODUCTION 
+In a current competitive economic climate, companies are becoming more stringen on their investment outcome and looking for ways to help them refocusing efforts to optimize the return on investment. This is even more true in the field of marketing, which has traditionally been enjoying the low expected ROI. Call for increaseing effectiveness of expense on marketing campaign has put pressure on managers to find the right targets for their offering product to ensure highest ROI. This project aim to contribute to this goal by providing a algorthimic method for identifying high potential customers with highest likelihood of return on investing in the field of marketing. A case of bank direct marketing campaign will be used to develop the most accurate model to predict customer likelihood of subscribing to the term of offer for loan. The implication of this study shall also help improving the Decision Support System for other fields that needs to determine the potential outcome given some known attributes.
+
+# 2. OBJETIVES AND APPROACH 
+This project aims to develop a model that helps predict success of the campaign that offers credit terms to customers using known characteristic of the customers.Such a model also allows marketing campaign manager to identify main characteristics of clients who would likely subscribe to the offer, thereby effectively allocate resources and remain focus. Three machine learning tools including regression, decision tree, and Naive Bayee. *LR* is normally used to make prediction when the outcomme variable is binary or multiclass. For the best prediction results, *LR* requires that the outcome variable has linear relationship with its attribute variable coefficients. Decision Tree is becoming very popular among data scientist. It uses a recursively technique in splitting observations in branches to construct a tree for the purpose of improving the prediction accuracy. 
+
+A Naive Bayes classifier utilizes Bayes Probability Theorem to determine the probability of the attributes of the data being associated with a certain class of the outcome variables. Naive Bayes requires that the attribute variables are independent given the target variable. 
+This conditional independence assumption rarely holds true in real world applications, but the algorithm tends to perform well and learn rapidly in various supervised classification problems. 
+
+Logistic Regression  (*LR*) and Decision Tree (*DT*) have an advantage of being relatively easy to graps as it follow human reasoning and making good prediction in classification tasks.
+On the other hand, Naive Bayes (*NB*) is rather more complex to understand for human, but presents an advantage in learning rapidly given large dataset. 
+
+In order to evaluate the performance of these algorithms and find the most suitable approach, I will use the method of measuring misclassification rate.
+
+# 3. DATA DESCRIPTION
+The dataset with bank customer attributes related with direct marketing campaigns of a Portuguese banking institution was obtained from the UCI Machine Learning Repository. In this data there are 45211 instances including 6 categorical, 4 binary and 7 numeric varianles. The target variable, *y*, is a binary indicates whether or not the client subscribed a term deposit with values: 'yes', 'no'. 8 variables are pertaining to clients' personal characteristic and thier loan history. Eight other variables provides information regarding client responsiveness to the campaign.
+
+```{r echo=FALSE, warning=FALSE}
+library(e1071) #This library is required for naive Bayes and support vector machines.
+library(ggplot2) #Enhanced plots.
+library(psych)
+BankData <-read.table("C:/Users/Mike/Desktop/Grad School/Harrisburg University/Fall 2016/ANLY 530 Machine Learning/Project/bank-full.csv", header=TRUE, sep=";")
+```
+
+  1 - age (numeric)
+  2 - job : type of job (categorical: "admin.", "unknown", "unemployed", "management", "housemaid", "entrepreneur", "student",
+                                       "blue-collar", "self-employed", "retired", "technician", "services")
+  3 - marital : marital status (categorical: "married", "divorced", "single"; note: "divorced" means divorced or widowed)
+  4 - education (categorical: "unknown", "secondary", "primary", "tertiary")
+  5 - default: has credit in default? (binary: "yes", "no")
+  6 - balance: average yearly balance, in euros (numeric)
+  7 - housing: has housing loan? (binary: "yes", "no")
+  8 - loan: has personal loan? (binary: "yes", "no")
+  9 - contact: contact communication type (categorical: "unknown", "telephone", "cellular")
+  10 - day: last contact day of the month (numeric)
+  11 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
+  12 - duration: last contact duration, in seconds (numeric)
+  13 - campaign: number of contacts performed during this campaign and for this client (numeric, includes last contact)
+  14 - pdays: number of days that passed by after the client was last contacted from a previous campaign (numeric, -1 means client was not previously contacted)
+  15 - previous: number of contacts performed before this campaign and for this client (numeric)
+  16 - poutcome: outcome of the previous marketing campaign (categorical: "unknown", "other", "failure", "success")
+  17 - y - has the client subscribed a term deposit? (binary: "yes", "no")
+
+# 4. DATA EXPLORATION
+
+## 4.1 Exploring Variables
+Only 11.70% of total clients has so far subscribed to the terms of loan, leaving majority of the clients unsubscribed. Without proper sampling, this skewedness in the outcome can potential affect the model performance. To address this issue, *ROSE* package will be used to overcome the bias when selecting training data.
+
+```{r subscription, echo=TRUE, warning=FALSE}
+table(BankData$y)
+pie(table(BankData$y),
+    labels =c("No: 88.30%","Yes: 11.70%"), 
+    col=c("red","green"),
+    cex=0.8,
+    main ="Client Subscription"
+    )
+```
+
+*Age* contains age of client measured in years at the time of offering. From Figure X, the client age ranges from a minimum of 18 to maximum of 95 year-old. Majority of clients age between 33 and 48, with an average of 40.94 year-old. With majority of the offered clients, are in this age range, it appears that the bank has put tremdous effort in reaching out to mid-career adult who likely to feel more stable financially. This could reflect be a good marketing strategy.
+
+```{r Age, echo=TRUE, warning=FALSE}
+barplot(table(BankData$age), 
+        main ="Age Distribution",
+        xlab ="Age", 
+        ylab ="Number of client"
+        )
+```
+
+*Marital* is an indicator for client marital status, providing information about whether he/she is married, divorced, or single at the time of offering. From the chart, we learn that 60.19% of the client are married, 11.52% are divorced and 28.29% are single.
+
+```{r marital, echo=TRUE, warning=FALSE}
+pie(table(BankData$marital),
+    labels =c("11.52%","60.19%","28.29"), 
+    col=c("red","green","grey"),
+    cex=0.8
+    )
+legend("topright", c("Divorced","Married","Single"), cex=0.7, fill=c("red","green","grey"))
+```
+
+*Job* contains information about client's occupation category. This categorical variable has 12 possible values, representing job classification. Three prominent occupations categories are blue-collar, management, and technician. For some client, this variable can be unknown. Students, housemaid, self-employed, and unemployed are among the smallest targeted group for offering. One surprise is that there is the less focus on entrepreneur group of whom shall be expected to receive more offering considering their rather more involvement in investing activities.
+
+```{r Job, echo=TRUE, warning=FALSE}
+table(BankData$job)
+barplot(table(BankData$job),
+        main="Distribution of Job",
+        ylab="Job",
+        xlab="Number of Clients",
+        horiz=FALSE,
+        las=2,
+        cex.axis=0.8,
+        cex.names = 0.80
+        )
+```
+
+*Education* indicates the highest level of education in which client has acheived as of the campaign date. Majority of our clients have secondary education. Education can be a factor when a person made decision about loan.
+```{r Education, echo=TRUE}
+barplot(table(BankData$education),
+        col=c("red","green","blue","grey"),
+        main="Education Distribution",
+        horiz=TRUE, 
+        names.arg=c("primary", "secondary", "tertiary","unknown")
+        )
+```
+
+*day* represents day of the month in which the client was last contact. Timing is one of the most important conceot in marketing, specially for outbound marking. Timing of contact affects the decision to buy a product or sign up for a loan. Monday could be a bad day when everyone is only back to work from enjoying the weekend. Friday could be bad if people are rush to get home and relax. Mid week can be a good time for most decision as people get used to their pase of the week. Of cause, this differ based on the type of employment of each client. From the chart, contacts were mostly made during the middle of the month with well-spread within each week. However, there is a lowest contact rate on the 1st and 30th of the month. 
+
+```{r Day, echo=TRUE, warning=FALSE}
+summary(BankData$day)
+barplot(table(BankData$day))
+```
+
+*campaign* represents the number of contacts performed during the campaign for a client. Results from *Sumary()* shows that the number of campaign ranges from 1 to 63 times, with the average of 2.76. The maximum campaign count of 63 suggests potential presence of outliers, specially when comparing to the mean and median. Boxplot() shows that there are a handful of data instance that falls off the 75th quartile. One shall expect one of the two explanation for such instances: (1) the clients are most loyal, but still have potential for offering (2) the clients remain on the campaign list due failure to review the target list from the managers.
+
+```{r echo=TRUE, warning=FALSE}
+summary(BankData$campaign)
+hist(BankData$campaign)
+boxplot(BankData$campaign, ylab ="Campaign Count")
+```
+
+*pdays* represents the number of days since the last time the client was contacted to offer. Generally, people have adverse feeling about being contacted too often due to privacy intrusion. At times, they would regard such frequent contact as of scam nature. Naturally, *pday* should have a negative impact on the decision of whether of not to subscribe to an offer. As shown in the histogram, we can say that most clients are new to the current campaign.
+
+```{r echo=TRUE, warning=FALSE}
+summary(BankData$pdays)
+hist(BankData$pdays)
+```
+
+*previous* represents the number of contacts performed during previous campaign for a client. Since we dont have a lot of client are old customers, we expect the mean to be fairly low. *summary()* shows this is the case.
+
+```{r echo=TRUE, warning=FALSE}
+summary(BankData$previous)
+hist(BankData$previous)
+```
+
+
+## 4.2 Checking Missing Value
+Missing value can be problematic for modeling and needs to be address ahead of time. For our dataset, I checked to see if there is any missing value anf found that the data is complete with no presence of missing value. 
+
+```{r echo=TRUE, warning=FALSE}
+sum(complete.cases(BankData))
+```
+
+## 4.3 Feature Correlation
+Part of the preprocessing process is to check for potential duplication in the data represented by highly correlated variables. Correlation matrix was created for all numeric variables as shown below. There is no presence of correlated variables to be concerned. *pdays* and *previous* have a moderate correlation of 0.45. It makes sense that the number of days since last contact and the number of contact from the previous campaign are related. The higher the contacts the bank made previously, the longer they would want to pase to avoid inserve effect on their client mood about the campaign itself. More intrusive campaign can be very harmful for the futre campaign. So bank generaly wants to give some space for their clients prior to launching the next one.
+
+```{r echo=TRUE, warning=FALSE}
+cor(BankData[c("age", "balance", "day", "duration","pdays","previous")])
+pairs.panels(BankData[c("age", "balance", "day", "duration","pdays","previous")])
+```
+
+# 5. DATA PREPARATION
+
+The full dataset *Bankdata* was splitted into *training* and *testing* sets using random sampling. 75 percent of total data was selected as part of the training set, while the remaining 25 percent will be used to test the model. **R** package **ROSE** was used to perform random sampling to help managing class imbalance as it facilitates over sampling, under sampling and synthetic data generation.
+
+```{r echo=TRUE, warning=FALSE}
+library(ROSE) #Random Over Sampling Examples
+set.seed(1234)
+sample = sort(sample(nrow(BankData), nrow(BankData)*.75)) # 75% random sample of the full dataset
+
+trainSet<-BankData[sample,]
+head(trainSet)
+trainSet_x <- trainSet[,1:16]
+trainSet_y <- trainSet$y
+
+testSet<-BankData[-sample,]
+testSet_x <- testSet[,1:16]
+testSet_y <- testSet$y
+```
+
+#  6. MODEL DEVELOPMENT
+The descriptive features in the dataset are split among numeric, categorical, and binary. For this reason, I will consider one probability-based, the naive bayes and one inofrmation-based models, the decision tree. I begin by creating baseline model with a two-level target and 16 descriptive features. 
+
+Using the train set, I performed 10-fold cross validation experiment on models that uses all features to predict the two-level target (*yes*/*no*). This method first randomly split the trainset into  10 distinct equal-size samples (folds). The model is then trained on 9 folds and leaves one fold out to be tested with the trained model. This process is repeated until all left out folds are tested. Finally, performance measures are recorded and averaged to estimate model ability to predict outcome. 
+```{r echo=TRUE, warning=FALSE}
+library("caret")
+library("MASS")
+library("klaR")
+
+# Defining Training Control
+train_control <- trainControl(method="CV", number=10)
+
+# Set reproducibility
+set.seed(1234)
+
+# train NB model using caret 10-fold cross-validation
+NaiveBayes.model <- train(y~., data=trainSet, trControl=train_control, method="nb")
+
+# train DT model using caret 10-fold cross-validation
+DecisionTree.model <- train(y~., data=trainSet, trControl=train_control, method="rpart")
+``` 
+
+
+```{r echo=TRUE, warning=FALSE}
+# Load rattle
+library(rattle)
+
+# Plotting Decision Tree
+fancyRpartPlot(DecisionTree.model$finalModel,
+               sub = "Final Decision Tree Model",
+               palettes=c("Reds", "Greens"))
+```
+
+Using the trained models, predictions cann be made to determine the outcome of loan subscription using the test set. Next section, I will discuss in detail the model performance in prediciting task.
+
+```{r echo=TRUE, warning=FALSE}
+# Predictions
+NaiveBayes.prediction <- predict(NaiveBayes.model, testSet_x)
+DecisionTree.prediction <- predict(DecisionTree.model, testSet_x)
+```
+
+# 7. MODEL EVALUATION
+This section, I will discuss on some of the important measures that help us evaluate model performances and determine which of the two algorithms is best suite for the task of predicting outcomes of loan subscription. The goal is to select an algorithm that acheives the highest level in the performance measure and has high potential to make accurate results with unforeseen data during the implementation stage. I review key metrics including *accuracy*, *Kappa* statistics, *sensitivity*, *specificity*, and use a graphical method, the Receiver Operating Characteristic (*ROC*), to compare the model performance.
+
+## 7.1 Confusion Matrix
+Since the target variable is categorical, *accuracy* measure that is	based	on	a	harmonic mean is most appropriate for measuring the model performance. (Kelleher et al, 2015) Confusion matrices are shown below.
+
+```{r echo=TRUE, warning=FALSE}
+  # Summarize results
+confusionMatrix(NaiveBayes.prediction, testSet_y, positive = "yes")
+confusionMatrix(DecisionTree.prediction, testSet_y, positive = "yes")
+```
+
+  *Accuracy*: Prediction results indicate what both models can achieve fairly high accuracy rate. When comparing them, naive bayes model appears to have slightly low accuracy than decision tree model. While **NB** has an accuracy rate of 87.90 percent, **DT** surpasses its accuracy level by almost 1.5 percent. This implies that of the 11,303 customers in the test set, **DT** can predict accurately 10102. As we know, accuracy - although represent how well a model is able to correctly predict the outcomes - is not a sufficient performance measure that entirely reflects the ability to predict future outcome. We shall also look at other metics as well. 
+
+  *Kappa* can also be use to understand the agreement between the model prediction and the true value. As shown, **NB** has *Kappa* value of near zero, which indicates a very poor agreement between prediction and actual values. One the other hand, **DT** has a slightly better agreement between the two set of values. However, with a value of 0.3608, it is still a low level of agreement. 
+  
+  *Sensitivity* represents proportion of positive instances (subscription: *yes*) in the trainset that are correctly classified. **NB** presents a very poor sensitivity rate. That means almost none of the subscribers were recognized correctly as they should have been. **DT**, on the other hand, shows a rather more spread with a sensitivity rate of 30.89 percent. In terms of loan subscription, it implies that 30.89 percent of all customers who had subscribed are classified correctly the model. That is about 421 customers out of the 1363 true subscribers. 
+
+  Sensitivity shall be assessed together with *specificity*, which represents the proportion of data that are negative (subscription: *no*) that are classified correctly. **NB** performs much better in predicting non-subscribers. It achieves a very high level specificity of 99.95 percent of all non-subscribers. Nonetheless, **DT** is also performing fairly well when predicting this group of subscribers, with specificity at 97.39 percent. As we can see, **DT** is performing fairly well in both measures, while  **NB** performs well in predicting negative outcome. Generally, we would want to have a balance between the two metrics. **DT** appears to provide this balance and yet yields high level in both metrics. Hence, I consider **DT** as a more preferred choice.
+  
+## 7.2 Graphical Plot: ROC Curve
+Next, I will use a graphical method to evaluate the performance. Receiver Operating Characteristic curve (*ROC*) can also be used to illustrate the performance of the two classifiers. ROC presents how the true positive rate (TPR) varies with fasle positive rate (FPR). A closer ROC curve to the left border and the top border represents a better classifier. As shown, ROC curve of **DT** consistently appears to above that of **NB**. With area under the curve (*AUC*) of 0.64, **DT** is considered as a better classifier than **NB**.
+
+```{r echo=TRUE, warning=FALSE}
+library("ROCR")
+
+# Prepares the legend string for the ROC figure
+c.legend<-c("NB AUC=","DT AUC=")
+
+#ROC for Naive Bayes
+NBpred <- prediction(as.numeric(NaiveBayes.prediction) , testSet_y)
+NBperf <- performance(NBpred, "tpr", "fpr")
+plot(NBperf,col="blue",lwd=2)
+c.legend[1]<-paste(c.legend[1],round((performance(NBpred,'auc')@y.values)[[1]],3))
+
+#ROC for Decision Tree
+DTpred <- prediction(as.numeric(DecisionTree.prediction) , as.numeric(testSet_y))
+DTperf <- performance(DTpred, "tpr", "fpr")
+plot(DTperf,add=TRUE,col="green",lwd=2)
+c.legend[2]<-paste(c.legend[2],round((performance(DTpred,'auc')@y.values)[[1]],3))
+
+# 45 Degree Line
+abline(a = 0, b = 1, lwd = 2, lty = 2)
+
+# Display legend
+legend(0.4,0.4, c.legend,lty=c(1,1),lwd=c(2,2),col=c("blue","green"))
+
+```
+
+
+## 7.3 Advantage & Disadvantages
+
+  Naive bayes model is good with handling large data. This gives it a relative advantage in processing our train set than contains 11,303 instances.Naive bayes works based on the assumptions that all descriptive features are independence from one another. From our data exploration step, this is mostly the case when there is no presence of high correlation among the feature variables. Decision tree has an advantage in that it does not have data type constraint as it can handle both numerical and categorical variables. It also is a non parametric that is it requires no assumptions about the space distribution and the classifier structure. However, decision tree tends to suffer from overfitting problem. This problem is solved by setting constraints on model parameters and pruning, which is automatically addressed in 10-fold cross validation process. Another potential issue is the fact that decision tree is generally not fit for continuous variables. When working with numeric variables, the algorithm can potentially loose information since it categorizes variables in different categories.
+  
+
+
+# 8. REFERENCES
+
+http://topepo.github.io/caret/model-training-and-tuning.html
+
+J	Kelleher,	B. Namee,	A.	DArcy. (2015). *Fundamentals of machine learning for predictive data analytics: algorithms, worked examples, and case studies.*
+
+
+## RESULTS
+
+The results show that the success rate of the bank offering campaign depends on a few features representing customers characteristics and behavior. Customer is more likely to subscribe term loan when he/she has spoken for for a longer duration. 
+The campaign has more successful rate during the March, September, and December. Notably, these represent the end of yearly quarters.
+Customers with history of credit default are less likely to subscribe the offer.
+Admin, blue colar, housemaid, and retiree are among the occupation groups that are most like to response positively with the offer
